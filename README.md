@@ -7,10 +7,10 @@ This project is a web application that calculates the minimum number of transact
 - Fast and efficient calculation
 
 ## Components
-- [Controller](https://github.com/safaoz90/Transactions/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/PokerConroller.java): RESTful controller for  minimum transaction calculator application.
-- [GameService](https://github.com/safaoz90/Transactions/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/GameService.java): Service component for managing game setting, users, balances and transactions.
-- [GameHelper](https://github.com/safaoz90/Transactions/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/GameHelper.java): Contains core minimum transaction algorithm based on [optimal account balancing](https://cheonhyangzhang.gitbooks.io/leetcode-solutions/content/solutions-451-500/465-optimal-account-balancing.html) problem and pokernow ledger parser. 
-- [index.html](https://github.com/safaoz90/Transactions/blob/master/src/main/resources/static/index.html): Main page to send/receive rest api calls
+- [Controller](https://github.com/safaoz90/MinimumTransactionCalculator/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/PokerConroller.java): RESTful controller for  minimum transaction calculator application.
+- [GameService](https://github.com/safaoz90/MinimumTransactionCalculator/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/GameService.java): Service component for managing game setting, users, balances and transactions.
+- [GameHelper](https://github.com/safaoz90/MinimumTransactionCalculator/blob/master/src/main/java/com/pokerapp/mintransactioncalculator/GameHelper.java): Contains core minimum transaction algorithm based on [optimal account balancing](https://cheonhyangzhang.gitbooks.io/leetcode-solutions/content/solutions-451-500/465-optimal-account-balancing.html) problem and pokernow ledger parser. 
+- [index.html](https://github.com/safaoz90/MinimumTransactionCalculator/blob/master/src/main/resources/static/index.html): Main page to send/receive rest api calls
 
 
 ## Requirements
