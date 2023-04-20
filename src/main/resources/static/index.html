@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimum Transactions</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row mb-5">
+      <!-- Game Setting Section -->
+      <div class="col-md-2">
+        <h4>Game Setting</h4>
+        <form id="game-setting-form">
+          <div class="form-group">
+            <label for="buy-in-chips">Buy-in Chips:</label>
+            <input type="number" class="form-control" id="buy-in-chips" name="buy-in-chips" value="1000" min="1">
+          </div>
+          <div class="form-group">
+            <label for="buy-in-value">Buy-in $$ Value:</label>
+            <input type="number" class="form-control" id="buy-in-value" name="buy-in-value" value="10" min="1">
+          </div>
+          <button type="submit" class="btn btn-primary">Update Game Setting</button>
+        </form>
+      </div>
+
+      <div class="mt-4 col-md-1"></div>
+
+      <!-- Add User Section -->
+      <div class="col-md-3">
+        <div class="single-upload mb-3">
+          <h4>Upload Ledger</h4>
+          <form id="singleUploadForm" name="singleUploadForm">
+            <input id="singleFileUploadInput" type="file" name="file" class="file-input" required />
+            <button type="submit" class="primary submit-btn">Submit</button>
+          </form>
+          <div class="upload-response">
+            <div id="singleFileUploadError"></div>
+            <div id="singleFileUploadSuccess"></div>
+          </div>
+        </div>
+
+        <div class="add-user mb-3">
+
+          <h4>Add User</h4>
+          <form id="user-stacks-form">
+            <div class="form-group">
+              <label for="user-name">User Name:</label>
+              <input type="text" class="form-control" id="user-name" name="user-name">
+            </div>
+            <div class="form-group">
+              <label for="number-of-buy-ins">Number of Buy-ins:</label>
+              <input type="number" class="form-control" id="number-of-buy-ins" name="number-of-buy-ins" min="1"
+                value="1" required>
+            </div>
+            <div class="form-group">
+              <label for="current-stack">Current Stack:</label>
+              <input type="number" class="form-control" id="current-stack" name="current-stack" min="0" value="0">
+            </div>
+            <button type="submit" class="btn btn-primary">Add User</button>
+          </form>
+        </div>
+
+        <form id="leader-form">
+          <div class="form-group">
+            <h4><label for="leader-name" id="leader-label">Leader:</label></h4>
+            <input type="text" class="form-control" id="leader-name" name="leader-name">
+          </div>
+          <button type="button" class="btn btn-primary" onclick="updateLeader()">Update Leader</button>
+        </form>
+      </div>
+
+      <div class="mt-4 col-md-1"></div>
+
+      <div class="col-md-4">
+        <h4>User Stacks</h4>
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Number of Buy-ins</th>
+              <th scope="col">Current Stack</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="existing-users">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-4 col-md-12"></div>
+    <div class="mt-4 col-md-12"></div>
+
+    <div class="row mb-5">
+      <div class="col-md-12">
+        <h4>Transactions</h4>
+        <button id="calculate-btn" type="button" class="btn btn-primary">Calculate Minimum Transactions</button>
+        <div class="mt-4 col-md-12"></div>
+        <div id="transactions"></div>
+        <div class="mt-4 col-md-12"></div>
+        <button id="copy-text-btn" type="button" class="btn btn-secondary" style="display: none;">Copy Text</button>
+      </div>
+    </div>
+  </div>
+  <script>
+
+    setInterval(fetchExistingUsers, 1500);
+    setInterval(fetchExistingLeader, 3000);
+
+    function fetchExistingUsers() {
+      $.ajax({
+        url: '/user',
+        type: 'GET',
+        success: function (users) {
+          let usersHtml = ``;
+          users.forEach(user => {
+            usersHtml += `
+          <tr>
+            <td>${user.name}</td>
+            <td>${user.buyIn}</td>
+            <td>${user.stack}</td>
+            <td><button class="btn btn-danger" onclick="deleteUser('${user.name}')">Delete</button></td>
+          </tr>`;
+          });
+
+          document.getElementById('existing-users').innerHTML = usersHtml;
+        },
+        error: function (error) {
+          console.log('Error fetching users:', error);
+        },
+      });
+    }
+
+    function deleteUser(userName) {
+      $.ajax({
+        url: `/user/${userName}`,
+        type: 'DELETE',
+        contentType: "application/json",
+        success: function (response) {
+          console.log('User deleted:', response);
+        },
+        error: function (error) {
+          console.log('Error deleting user:', error);
+        },
+      });
+    }
+
+    document.getElementById('game-setting-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const buyInChips = document.getElementById('buy-in-chips').value;
+      const buyInValue = document.getElementById('buy-in-value').value;
+
+      const formData = {
+        'chipAmount': parseInt(buyInChips, 10),
+        'dollarValue': parseInt(buyInValue, 10),
+      };
+
+      $.ajax({
+        url: '/game',
+        type: 'POST',
+        data: JSON.stringify(formData),
+        contentType: 'application/json',
+        success: function (response) {
+          console.log('Game settings updated:', response);
+        },
+        error: function (error) {
+          console.log('Error updating game settings:', error);
+        },
+      });
+    });
+
+    document.getElementById('user-stacks-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const userName = document.getElementById('user-name').value;
+      const numberOfBuyIns = document.getElementById('number-of-buy-ins').value;
+      const currentStack = document.getElementById('current-stack').value;
+
+      const userData = {
+        'name': userName,
+        'buyIn': parseInt(numberOfBuyIns, 10),
+        'stack': parseInt(currentStack, 10),
+      };
+
+      $.ajax({
+        url: '/user',
+        type: 'POST',
+        data: JSON.stringify(userData),
+        contentType: 'application/json',
+        success: function (response) {
+          console.log('User added:', response);
+          // Clear the form fields after successful submission
+          document.getElementById('user-stacks-form').reset();
+        },
+        error: function (error) {
+          console.log('Error adding user:', error);
+        },
+      });
+    });
+
+    document.getElementById('calculate-btn').addEventListener('click', function () {
+      $.ajax({
+        url: '/transactions',
+        type: 'GET',
+        contentType: 'application/json',
+        success: function (transactions) {
+          let transactionsHtml = `<div class="card mb-3"><div class="card-body">`;
+
+          transactions.forEach(transaction => {
+            transactionsHtml += `<div class="transaction-detail">From:${transaction.from} To:${transaction.to} $${transaction.amount}</div>`;
+          });
+
+          transactionsHtml += `</div></div>`;
+          document.getElementById('transactions').innerHTML = transactionsHtml;
+          updateCopyTextButtonVisibility();
+        },
+        error: function (error) {
+          document.getElementById('transactions').innerHTML = ('Error fetching transactions: ' + error.responseText);
+        },
+      });
+    });
+
+    document.getElementById('copy-text-btn').addEventListener('click', function () {
+      const transactions = document.getElementById('transactions');
+      const transactionCards = transactions.getElementsByClassName('transaction-detail');
+      let textToCopy = '';
+
+      for (let i = 0; i < transactionCards.length; i++) {
+        textToCopy += transactionCards[i].textContent.trim();
+        if (i < transactionCards.length - 1) {
+          textToCopy += '\n';
+        }
+      }
+
+      const textarea = document.createElement('textarea');
+
+      textarea.value = textToCopy;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      alert('Transactions copied to clipboard.');
+    });
+
+    function updateCopyTextButtonVisibility() {
+      const transactions = document.getElementById('transactions');
+      const copyTextButton = document.getElementById('copy-text-btn');
+
+      if (transactions.textContent.trim()) {
+        copyTextButton.style.display = 'inline-block';
+      } else {
+        copyTextButton.style.display = 'none';
+      }
+    }
+
+    function updateLeader() {
+      const leaderName = document.getElementById('leader-name').value;
+
+      $.ajax({
+        url: `/leader/${leaderName}`,
+        type: 'POST',
+        contentType: "application/json",
+        dataType: 'json',
+        success: function (response) {
+          console.log('Leader updated successfully:', response);
+        },
+        error: function (error) {
+          console.log('Error updating leader:', error);
+        },
+      });
+    }
+
+    function fetchExistingLeader() {
+      $.ajax({
+        url: '/leader',
+        type: 'GET',
+        success: function (response) {
+          const leaderName = response;
+          document.getElementById('leader-label').textContent = 'Leader: ' + leaderName;
+        },
+        error: function (error) {
+          console.log('Error fetching leader:', error);
+        },
+      });
+    }
+
+    var singleUploadForm = document.querySelector('#singleUploadForm');
+    var singleFileUploadInput = document.querySelector('#singleFileUploadInput');
+    var singleFileUploadError = document.querySelector('#singleFileUploadError');
+    var singleFileUploadSuccess = document.querySelector('#singleFileUploadSuccess');
+
+
+    function uploadSingleFile(file) {
+      var formData = new FormData();
+      formData.append("file", file);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload");
+
+      xhr.onload = function () {
+        console.log(xhr.responseText);
+        if (xhr.status == 200) {
+          singleFileUploadError.style.display = "none";
+          singleFileUploadSuccess.innerHTML = "<p>File Uploaded Successfully.</p>";
+          singleFileUploadSuccess.style.display = "block";
+        } else {
+          singleFileUploadSuccess.style.display = "none";
+          singleFileUploadError.innerHTML = "Some Error Occurred";
+        }
+      }
+
+      xhr.send(formData);
+    }
+
+    singleUploadForm.addEventListener('submit', function (event) {
+      var files = singleFileUploadInput.files;
+      if (files.length === 0) {
+        singleFileUploadError.innerHTML = "Please select a file";
+        singleFileUploadError.style.display = "block";
+      }
+      uploadSingleFile(files[0]);
+      event.preventDefault();
+    }, true);
+  </script>
+</body>
+</html>
