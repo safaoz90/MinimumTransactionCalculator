@@ -19,7 +19,7 @@ This project is a web application that calculates the minimum number of transact
 
 ## Setup and Run
 1. Clone the repository:
- `git clone https://github.com/safaoz90/Transactions.git`
+ `git clone https://github.com/safaoz90/MinimumTransactionCalculator.git`
 2. Build the project using Maven:
  `mvn clean install`
 3. Run the application:
