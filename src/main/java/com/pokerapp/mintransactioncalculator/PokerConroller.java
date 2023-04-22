@@ -14,51 +14,57 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.pokerapp.mintransactioncalculator.entity.Balance;
+import com.pokerapp.mintransactioncalculator.entity.GameResult;
 import com.pokerapp.mintransactioncalculator.entity.GameSetting;
-import com.pokerapp.mintransactioncalculator.entity.Transaction;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
 @RestController
 public class PokerConroller {
-    @Autowired GameService service;
+    @Autowired
+    GameService service;
+
+    @GetMapping("/game")
+    public GameSetting getGame() {
+        return service.getGame();
+    }
 
     @PostMapping("/game")
-    public void updateGame(@RequestBody GameSetting gameSetting){
+    public void updateGame(@RequestBody GameSetting gameSetting) {
         service.updateGame(gameSetting);
     }
 
     @PostMapping("/user")
-    public void addUser(@RequestBody User user){
+    public void addUser(@RequestBody User user) {
         service.addUser(user);
     }
 
     @GetMapping("/user")
-    public List<User> getAllUsers(){
+    public List<User> getAllUsers() {
         return service.getAllUsers();
     }
 
     @DeleteMapping("/user/{username}")
-    public void deleteUser(@PathVariable String username){
+    public void deleteUser(@PathVariable String username) {
         service.deleteUser(username);
     }
 
     @GetMapping("/transactions")
-    public ResponseEntity<List<Transaction>> getMinTransactions() throws Exception{
-        try{
-            return new ResponseEntity(service.minTransactions(), HttpStatus.OK);
-         }
-        catch(Exception exception ){
-          return new ResponseEntity(exception.getMessage(), HttpStatus.BAD_REQUEST);
-         }
+    public ResponseEntity<GameResult> getMinTransactions() throws Exception {
+        try {
+            return new ResponseEntity(new GameResult(service.minTransactions(), service.getBalances()), HttpStatus.OK);
+        } catch (Exception exception) {
+            return new ResponseEntity(exception.getMessage(), HttpStatus.BAD_REQUEST);
+        }
     }
 
     @PostMapping("/leader/{username}")
-    public void updateLeader(@PathVariable String username){
+    public void updateLeader(@PathVariable String username) {
         service.updateLeader(username);
     }
 
     @GetMapping("/leader")
-    public String updateLeader(){
+    public String updateLeader() {
         return service.getLeader();
     }
 
@@ -66,5 +72,19 @@ public class PokerConroller {
     public String uploadFile(@RequestParam("file") MultipartFile file) {
         service.parseFile(file);
         return file.getOriginalFilename();
+    }
+
+    @GetMapping("/balances")
+    public ResponseEntity<List<Balance>> getBalances() throws Exception {
+        try {
+            return new ResponseEntity(service.getBalances(), HttpStatus.OK);
+        } catch (Exception exception) {
+            return new ResponseEntity(exception.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping(value = "/leaderboard")
+    public String publishLeaderboard() {
+        return service.publishLeaderboard();
     }
 }

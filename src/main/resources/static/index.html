@@ -26,6 +26,10 @@
             <label for="buy-in-value">Buy-in $$ Value:</label>
             <input type="number" class="form-control" id="buy-in-value" name="buy-in-value" value="10" min="1">
           </div>
+          <div class="form-group">
+            <label for="leaderboard-id">Leaderboard ID:</label>
+            <input type="text" class="form-control" id="leaderboard-id" name="leaderboard-id" value="">
+          </div>
           <button type="submit" class="btn btn-primary">Update Game Setting</button>
         </form>
       </div>
@@ -38,7 +42,6 @@
           <h4>Upload Ledger</h4>
           <form id="singleUploadForm" name="singleUploadForm">
             <input id="singleFileUploadInput" type="file" name="file" class="file-input" required />
-            <button type="submit" class="primary submit-btn">Submit</button>
           </form>
           <div class="upload-response">
             <div id="singleFileUploadError"></div>
@@ -105,7 +108,7 @@
         <div class="mt-4 col-md-12"></div>
         <div id="transactions"></div>
         <div class="mt-4 col-md-12"></div>
-        <button id="copy-text-btn" type="button" class="btn btn-secondary" style="display: none;">Copy Text</button>
+        <button id="copy-text-btn" type="button" class="btn btn-secondary" style="display: none;">Copy Text</button>&nbsp;<button id="leaderboard-btn" type="button" class="btn btn-secondary" onclick="publishLeaderboard()" style="display: none;">Publish Leaderboard</button>
       </div>
     </div>
   </div>
@@ -113,6 +116,7 @@
 
     setInterval(fetchExistingUsers, 1500);
     setInterval(fetchExistingLeader, 3000);
+    fetchExistingGame();
 
     function fetchExistingUsers() {
       $.ajax({
@@ -157,10 +161,12 @@
 
       const buyInChips = document.getElementById('buy-in-chips').value;
       const buyInValue = document.getElementById('buy-in-value').value;
+      const leaderboardId = document.getElementById('leaderboard-id').value;
 
       const formData = {
         'chipAmount': parseInt(buyInChips, 10),
         'dollarValue': parseInt(buyInValue, 10),
+        'leaderboardId': leaderboardId,
       };
 
       $.ajax({
@@ -211,21 +217,30 @@
         url: '/transactions',
         type: 'GET',
         contentType: 'application/json',
-        success: function (transactions) {
+        success: function (result) {
           let transactionsHtml = `<div class="card mb-3"><div class="card-body">`;
 
-          transactions.forEach(transaction => {
+          result.transactions.forEach(transaction => {
             transactionsHtml += `<div class="transaction-detail">From:${transaction.from} To:${transaction.to} $${transaction.amount}</div>`;
+          });
+
+          transactionsHtml += "<hr>";
+
+          result.balances.forEach(balance => {
+            transactionsHtml += `<div class="transaction-detail">${balance.name}: ${balance.balance}</div>`;
           });
 
           transactionsHtml += `</div></div>`;
           document.getElementById('transactions').innerHTML = transactionsHtml;
+          
           updateCopyTextButtonVisibility();
         },
         error: function (error) {
           document.getElementById('transactions').innerHTML = ('Error fetching transactions: ' + error.responseText);
         },
       });
+
+
     });
 
     document.getElementById('copy-text-btn').addEventListener('click', function () {
@@ -254,11 +269,14 @@
     function updateCopyTextButtonVisibility() {
       const transactions = document.getElementById('transactions');
       const copyTextButton = document.getElementById('copy-text-btn');
+      const leaderboardButton = document.getElementById('leaderboard-btn');
 
       if (transactions.textContent.trim()) {
         copyTextButton.style.display = 'inline-block';
+        leaderboardButton.style.display = 'inline-block';
       } else {
         copyTextButton.style.display = 'none';
+        leaderboardButton.style.display = 'inline-block';
       }
     }
 
@@ -279,16 +297,45 @@
       });
     }
 
-    function fetchExistingLeader() {
+    function publishLeaderboard() {
       $.ajax({
-        url: '/leader',
-        type: 'GET',
+        url: '/leaderboard',
+        type: 'POST',
         success: function (response) {
-          const leaderName = response;
-          document.getElementById('leader-label').textContent = 'Leader: ' + leaderName;
+          console.log('Leaderboard published:', response);
+          alert(response);
         },
         error: function (error) {
-          console.log('Error fetching leader:', error);
+          console.log('Error publishing leaderboard:', error);
+        },
+      });
+    }
+
+function fetchExistingLeader() {
+  $.ajax({
+    url: '/leader',
+    type: 'GET',
+    success: function (response) {
+      const leaderName = response;
+      document.getElementById('leader-label').textContent = 'Leader: ' + leaderName;
+    },
+    error: function (error) {
+      console.log('Error fetching leader:', error);
+    },
+  });
+}
+
+    function fetchExistingGame() {
+      $.ajax({
+        url: '/game',
+        type: 'GET',
+        success: function (response) {
+          document.getElementById('leaderboard-id').value = response.leaderboardId;
+          document.getElementById('buy-in-value').value = response.dollarValue;
+          document.getElementById('buy-in-chips').value = response.chipAmount;
+        },
+        error: function (error) {
+          console.log('Error fetching game:', error);
         },
       });
     }
@@ -321,15 +368,10 @@
       xhr.send(formData);
     }
 
-    singleUploadForm.addEventListener('submit', function (event) {
-      var files = singleFileUploadInput.files;
-      if (files.length === 0) {
-        singleFileUploadError.innerHTML = "Please select a file";
-        singleFileUploadError.style.display = "block";
-      }
-      uploadSingleFile(files[0]);
-      event.preventDefault();
-    }, true);
+    document.getElementById("singleUploadForm").onchange = function() {
+      uploadSingleFile(singleFileUploadInput.files[0]);
+    }
+
   </script>
 </body>
 </html>
