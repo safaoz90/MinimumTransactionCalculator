@@ -1,5 +1,5 @@
 # MinTransactionCalculator
-This project is a web application that calculates the minimum number of transactions in a poker game. It is built using Java and the Spring Boot framework. Currently deployed on Azure https://transactions.politemushroom-33d8cf3c.westus.azurecontainerapps.io
+This project is a web application that calculates the minimum number of transactions in a poker game. It is built using Java and the Spring Boot framework. Currently deployed on Azure https://game-transactions.azurewebsites.net/
 
 ## Features
 - Calculate the minimum number of transactions for a poker game
