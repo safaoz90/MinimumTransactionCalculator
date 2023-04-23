@@ -10,6 +10,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </head>
+<style>
+  table {
+    border-collapse: collapse;
+    width: 30%;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px;
+  }
+
+  tr:nth-child(even) {
+    background-color: #D6EEEE;
+  }
+</style>
 
 <body>
   <div class="container">
@@ -108,15 +124,45 @@
         <div class="mt-4 col-md-12"></div>
         <div id="transactions"></div>
         <div class="mt-4 col-md-12"></div>
-        <button id="copy-text-btn" type="button" class="btn btn-secondary" style="display: none;">Copy Text</button>&nbsp;<button id="leaderboard-btn" type="button" class="btn btn-secondary" onclick="publishLeaderboard()" style="display: none;">Publish Leaderboard</button>
+        <button id="copy-text-btn" type="button" class="btn btn-secondary" style="display: none;">Copy
+          Text</button>&nbsp;<button id="leaderboard-btn" type="button" class="btn btn-secondary"
+          onclick="publishLeaderboard()" style="display: none;">Publish Leaderboard</button>
       </div>
     </div>
   </div>
+
+  <div class="mt-7 col-md-4">
+    <h4>Leaderboard month: <label for="leaderboard-name" id="leaderboard-label"></label></h4>
+    <button id="backBtn">Previous month</button>
+    <button id="forwardBtn">Next month</button><br />
+    <div id="leaderboardTable" width="30%"></div>
+    <div id="leaderboardTable"></div>
+  </div>
   <script>
 
+    let leaderboardData = {};
+    let leaderboardKeys = [];
+    let currentTableIndex = 0;
     setInterval(fetchExistingUsers, 1500);
     setInterval(fetchExistingLeader, 3000);
     fetchExistingGame();
+    fetchExistingLeaderboard();
+
+    function renderLeaderboardTable(index) {
+      let tableData = leaderboardData.leaderboard[leaderboardKeys[index]];
+      let tableHtml = "<table table-striped table-bordered>";
+      tableHtml += "<tr><th>Name</th><th>Score</th></tr>";
+      document.getElementById('leaderboard-label').textContent = leaderboardKeys[index];
+      if (tableData.balances) {
+        balancesData = tableData.balances;
+        balancesData.sort((a, b) => b.balance - a.balance);
+        balancesData.forEach(function (balance) {
+          tableHtml += "<tr><td>" + balance.name + "</td><td>" + balance.balance + "</td></tr>";
+        });
+      }
+      tableHtml += "</table>";
+      document.getElementById("leaderboardTable").innerHTML = tableHtml;
+    }
 
     function fetchExistingUsers() {
       $.ajax({
@@ -155,6 +201,20 @@
         },
       });
     }
+
+    document.getElementById("backBtn").addEventListener("click", function () {
+      if (currentTableIndex > 0) {
+        currentTableIndex--;
+        renderLeaderboardTable(currentTableIndex);
+      }
+    });
+
+    document.getElementById("forwardBtn").addEventListener("click", function () {
+      if (currentTableIndex < leaderboardKeys.length - 1) {
+        currentTableIndex++;
+        renderLeaderboardTable(currentTableIndex);
+      }
+    });
 
     document.getElementById('game-setting-form').addEventListener('submit', function (event) {
       event.preventDefault();
@@ -232,7 +292,7 @@
 
           transactionsHtml += `</div></div>`;
           document.getElementById('transactions').innerHTML = transactionsHtml;
-          
+
           updateCopyTextButtonVisibility();
         },
         error: function (error) {
@@ -303,7 +363,7 @@
         type: 'POST',
         success: function (response) {
           console.log('Leaderboard published:', response);
-          alert(response);
+          fetchExistingLeaderboard();
         },
         error: function (error) {
           console.log('Error publishing leaderboard:', error);
@@ -311,19 +371,19 @@
       });
     }
 
-function fetchExistingLeader() {
-  $.ajax({
-    url: '/leader',
-    type: 'GET',
-    success: function (response) {
-      const leaderName = response;
-      document.getElementById('leader-label').textContent = 'Leader: ' + leaderName;
-    },
-    error: function (error) {
-      console.log('Error fetching leader:', error);
-    },
-  });
-}
+    function fetchExistingLeader() {
+      $.ajax({
+        url: '/leader',
+        type: 'GET',
+        success: function (response) {
+          const leaderName = response;
+          document.getElementById('leader-label').textContent = 'Leader: ' + leaderName;
+        },
+        error: function (error) {
+          console.log('Error fetching leader:', error);
+        },
+      });
+    }
 
     function fetchExistingGame() {
       $.ajax({
@@ -333,6 +393,23 @@ function fetchExistingLeader() {
           document.getElementById('leaderboard-id').value = response.leaderboardId;
           document.getElementById('buy-in-value').value = response.dollarValue;
           document.getElementById('buy-in-chips').value = response.chipAmount;
+        },
+        error: function (error) {
+          console.log('Error fetching game:', error);
+        },
+      });
+    }
+
+    function fetchExistingLeaderboard() {
+      $.ajax({
+        url: '/leaderboard',
+        type: 'GET',
+        success: function (response) {
+          leaderboardData = response;
+          leaderboardKeys = Object.keys(leaderboardData.leaderboard);
+          leaderboardKeys.sort();
+          currentTableIndex = leaderboardKeys.length - 1;
+          renderLeaderboardTable(currentTableIndex);
         },
         error: function (error) {
           console.log('Error fetching game:', error);
@@ -368,10 +445,11 @@ function fetchExistingLeader() {
       xhr.send(formData);
     }
 
-    document.getElementById("singleUploadForm").onchange = function() {
+    document.getElementById("singleUploadForm").onchange = function () {
       uploadSingleFile(singleFileUploadInput.files[0]);
     }
 
   </script>
 </body>
+
 </html>

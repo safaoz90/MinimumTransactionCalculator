@@ -1,44 +1,62 @@
 package com.pokerapp.mintransactioncalculator;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokerapp.mintransactioncalculator.entity.Balance;
+import com.pokerapp.mintransactioncalculator.entity.GameResult;
 import com.pokerapp.mintransactioncalculator.entity.GameSetting;
+import com.pokerapp.mintransactioncalculator.entity.Leaderboard;
 import com.pokerapp.mintransactioncalculator.entity.Transaction;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class GameService {
+    private String scoreboardBucketName =  "scoreleaderboard";
+    private String instanceId = "9aaee532-e17d-11ed-b5ea-0242ac120002";
+    private String region = "us-west-2";
+
     private GameSetting gameSetting = new GameSetting();
     private Map<String, User> users = new HashMap<>();
     private List<Balance> balances = new ArrayList<Balance>();
     private User leader;
+    private AmazonS3 s3Client;
 
     GameService() {
         this.leader = new User("", 1, 0);
+
+        BasicAWSCredentials credentials = new BasicAWSCredentials(System.getProperty("AWS_ACCESS_KEY", ""), System.getProperty("AWS_SECRET_KEY", ""));
+        s3Client = AmazonS3ClientBuilder.standard()
+            .withCredentials(new AWSStaticCredentialsProvider(credentials))
+            .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("https://s3." + region + ".amazonaws.com", region))
+            .build();
     }
 
     public void updateGame(GameSetting gameSetting) {
@@ -107,139 +125,178 @@ public class GameService {
         }
     }
 
-    public String publishLeaderboard() {
-        try {
-            String leaderboardId = getLeaderboardId();
+    public void publishLeaderboard() throws Exception {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.HOUR, 12);
+        String year = String.valueOf(cal.get(Calendar.YEAR));
+        String month = String.valueOf(cal.get(Calendar.MONTH) + 1);
+        if (month.length() == 1) {
+            month = "0" + month;
+        }
 
-            // create URL object
-            URL url = new URL("https://keepthescore.co/api/" + leaderboardId + "/board/");
-
-            // create HttpURLConnection object
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-
-            // set request method
-            con.setRequestMethod("GET");
-            con.setRequestProperty("Referer", "https://keepthescore.co/board/" + leaderboardId);
-
-            // read response body
-            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-
-            JSONObject jsonObject = new JSONObject(response.toString());
-            
-            JSONArray rounds = jsonObject.getJSONArray("rounds");
-            for (int i = 0; i < rounds.length(); ++i) {
-                JSONObject round = rounds.getJSONObject(i);
-                String dateStr = round.getString("date");
-
-                SimpleDateFormat dt = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
-                Date date = dt.parse(dateStr);
-
-                long twoDaysAgo = System.currentTimeMillis() - 1000*60*60*24*2;
-                Date prev = new Date(twoDaysAgo);
-                if (date.after(prev)) {
-                    return "Leaderboard is already published. Skipped this operation.";
-                }
-            }
-
-            JSONArray players = jsonObject.getJSONArray("players");
-
-            List<JSONObject> sortedPlayers = new ArrayList<JSONObject>();
-            for (int i = 0; i < players.length(); i++) {
-                sortedPlayers.add(players.getJSONObject(i));
-            }
-
-            Collections.sort(sortedPlayers, new Comparator<JSONObject>() {
-                //You can change "Name" with "ID" if you want to sort by ID
-                private static final String KEY_NAME = "name";
+        String day = String.valueOf(cal.get(Calendar.DAY_OF_MONTH));
+        if (day.length() == 1) {
+            day = "0" + day;
+        }
         
-                @Override
-                public int compare(JSONObject a, JSONObject b) {
-                    String valA = new String();
-                    String valB = new String();
-                    valA = a.getString(KEY_NAME);
-                    valB = b.getString(KEY_NAME);
-                    return valA.compareTo(valB);
-                    //if you want to change the sort order, simply use the following:
-                    //return -valA.compareTo(valB);
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        GameResult result = new GameResult(minTransactions(), getBalances());
+        String jsonString = objectMapper.writeValueAsString(result);
+        jsonString = jsonString.replace("Leader ", "");
+
+        uploadContent(instanceId + "/" + year + "/" + month + "/" + day, jsonString);
+    }
+
+    public Leaderboard getLeaderboard() throws JsonMappingException, JsonProcessingException {
+        Leaderboard leaderboard = new Leaderboard();
+        List<String> years = getS3Folders(instanceId);
+        Map<String, Integer> winCounts = new HashMap<String, Integer>();
+        for (String year : years) {
+            String numericYear = findLeafFolder(year);
+            List<String> months = getS3Folders(year);
+            for (String month : months) {
+                String numericMonth = findLeafFolder(month);
+                List<String> days = getS3Files(month);
+
+                Map<String, Balance> userBalances = new HashMap<String, Balance>();
+                for (String day : days) {
+                    if (day.endsWith("/")) {
+                        continue;
+                    }
+
+                    String dailyResult = getS3Content(day);
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    GameResult gameResult = objectMapper.readValue(dailyResult, GameResult.class);
+                    for (Balance balance : gameResult.getBalances()) {
+                        if (!userBalances.containsKey(balance.name)) {
+                            userBalances.put(balance.name, new Balance(balance.name));
+                        }
+
+                        Balance updateBalance = userBalances.get(balance.name);
+                        updateBalance.balance += balance.balance;
+                    }
                 }
-            });
 
-            // create request body
-            String requestBody = "";
-            for (int i = 0; i < sortedPlayers.size(); ++i) {
-                JSONObject playerJson = sortedPlayers.get(i);
-                String playerName = playerJson.getString("name").split(" ")[0].toLowerCase();
+                List<Balance> balances = new ArrayList<Balance>(userBalances.values());
 
-                Balance balance = balances.stream().filter(b -> b.name.replace("Leader ", "").toLowerCase().equals(playerName))
-                        .findFirst().orElse(null);
+                Collections.sort(balances, (o1, o2) -> o2.balance - o1.balance);
+                leaderboard.leaderboard.put(numericYear + "-" + numericMonth, new GameResult(balances));
 
-                if (requestBody.length() > 0) {
-                    requestBody += "&";
+                // No star for current month.
+                Calendar cal = Calendar.getInstance();
+                cal.add(Calendar.HOUR, 12);
+                String currentYear = String.valueOf(cal.get(Calendar.YEAR));
+                String currentMonth = String.valueOf(cal.get(Calendar.MONTH) + 1);
+                if (currentMonth.length() == 1) {
+                    currentMonth = "0" + currentMonth;
+                }
+        
+                if (currentYear.length() == 1) {
+                    currentYear = "0" + currentYear;
                 }
 
-                if (balance == null) {
-                    // User did not play or did not lose or did not win. Emit zeros!
-                    requestBody += "scores-" + i + "-player_name=" + playerJson.getString("name").replace(" ", "+");
-                    requestBody += "&scores-" + i + "-score_format=INTEGER";
-                    requestBody += "&scores-" + i + "-player_id=" + String.valueOf(playerJson.getInt("id"));
-                    requestBody += "&scores-" + i + "-single_score=0";
+                if (numericYear.equals(currentYear) && numericMonth.equals(currentMonth)) {
                     continue;
                 }
 
-                requestBody += "scores-" + i + "-player_name=" + playerJson.getString("name").replace(" ", "+");
-                requestBody += "&scores-" + i + "-score_format=INTEGER";
-                requestBody += "&scores-" + i + "-player_id=" + String.valueOf(playerJson.getInt("id"));
-                requestBody += "&scores-" + i + "-single_score=" + String.valueOf(balance.balance);
+                String winner = balances.get(0).name;
+                if (!winCounts.containsKey(winner)) {
+                    winCounts.put(winner, 0);
+                }
+
+                winCounts.put(winner, winCounts.get(winner) + 1);
             }
+        }
 
-            Calendar now = Calendar.getInstance();
-            requestBody += "&comment=" + URLEncoder.encode((now.get(Calendar.MONTH) + 1) + "/" + (now.get(Calendar.DAY_OF_MONTH) + 1), "UTF-8");
-
-            // create URL object
-            url = new URL("https://keepthescore.co/round_add/" + leaderboardId + "/");
-
-            // create HttpURLConnection object
-            con = (HttpURLConnection) url.openConnection();
-
-            // set request method
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Referer", "https://keepthescore.co/round_add/" + leaderboardId + "/");
-
-            // set request headers
-            con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-            // enable output and disable caching
-            con.setDoOutput(true);
-            con.setUseCaches(false);
-
-            // write request body
-            OutputStream outputStream = con.getOutputStream();
-            byte[] requestBodyBytes = requestBody.getBytes("UTF-8");
-            outputStream.write(requestBodyBytes);
-            outputStream.flush();
-            outputStream.close();
-
-            // read response body
-            in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-            response = new StringBuffer();
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+        for (String leaderboardKey : leaderboard.leaderboard.keySet()) {
+            GameResult result = leaderboard.leaderboard.get(leaderboardKey);
+            for (Balance balance : result.balances) {
+                if (winCounts.containsKey(balance.name)) {
+                    balance.name += String.join("", Collections.nCopies(winCounts.get(balance.name), "⭐"));
+                }
             }
-            in.close();
+        }
 
-            return "Leaderboard published.";
-        } catch (Exception e) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            String sStackTrace = sw.toString(); // stack trace as a string
-            return e.toString() + sStackTrace;
+        return leaderboard;
+    }
+    
+    private List<String> getS3Folders(String prefix) {
+        String delimiter = "/";
+        if (!prefix.endsWith(delimiter)) {
+            prefix += delimiter;
+        }
+
+        // List all folders in the bucket
+        ListObjectsV2Request request = new ListObjectsV2Request()
+                .withBucketName(scoreboardBucketName)
+                .withPrefix(prefix)
+                .withDelimiter(delimiter);
+        ListObjectsV2Result result = s3Client.listObjectsV2(request);
+        return result.getCommonPrefixes();
+    }
+    
+    private List<String> getS3Files(String prefix) {
+        String delimiter = "/";
+        if (!prefix.endsWith(delimiter)) {
+            prefix += delimiter;
+        }
+
+        // List all folders in the bucket
+        ListObjectsV2Request request = new ListObjectsV2Request()
+                .withBucketName(scoreboardBucketName)
+                .withPrefix(prefix)
+                .withDelimiter(delimiter);
+        ListObjectsV2Result result = s3Client.listObjectsV2(request);
+        List<S3ObjectSummary> objects = result.getObjectSummaries();
+
+        return objects.stream().map(o -> o.getKey()).collect(Collectors.toList());
+    }
+
+    private String getS3Content(String filename) {
+        // Download the contents of the file
+        S3Object s3Object = s3Client.getObject(scoreboardBucketName, filename);
+        S3ObjectInputStream inputStream = s3Object.getObjectContent();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        String result = "";
+        String line = "";
+        try {
+            while ((line = reader.readLine()) != null) {
+                result += line;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    private void uploadContent(String key, String content) {
+        // Convert the string content to a byte array and create an object metadata
+        byte[] contentBytes = content.getBytes();
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(contentBytes.length);
+        
+        // Upload the string content as an object to the specified bucket
+        PutObjectRequest putObjectRequest = new PutObjectRequest(scoreboardBucketName, key, new ByteArrayInputStream(contentBytes), metadata);
+        s3Client.putObject(putObjectRequest);
+    }
+
+    private String findLeafFolder(String path) {
+        // Check if the path ends with a file separator
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+
+        // Find the last index of the file separator
+        int lastIndex = path.lastIndexOf("/");
+
+        if (lastIndex == -1) {
+            // Handle the case where the path doesn't contain any file separator
+            return path;
+        } else {
+            // Extract the substring after the last file separator
+            return path.substring(lastIndex + 1);
         }
     }
 }

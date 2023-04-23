@@ -14,9 +14,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.pokerapp.mintransactioncalculator.entity.Balance;
 import com.pokerapp.mintransactioncalculator.entity.GameResult;
 import com.pokerapp.mintransactioncalculator.entity.GameSetting;
+import com.pokerapp.mintransactioncalculator.entity.Leaderboard;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
 @RestController
@@ -84,7 +87,12 @@ public class PokerConroller {
     }
 
     @PostMapping(value = "/leaderboard")
-    public String publishLeaderboard() {
-        return service.publishLeaderboard();
+    public void publishLeaderboard() throws Exception {
+        service.publishLeaderboard();
+    }
+
+    @GetMapping(value = "/leaderboard")
+    public ResponseEntity<Leaderboard> getLeaderboard() throws JsonMappingException, JsonProcessingException {
+        return new ResponseEntity(service.getLeaderboard(), HttpStatus.OK);
     }
 }
