@@ -43,10 +43,6 @@ public class GameService {
     private String scoreboardBucketName =  "scoreleaderboard";
     private String instanceId = "9aaee532-e17d-11ed-b5ea-0242ac120002";
 
-    @Value("${AWS_ACCESS_KEY}")
-    private String accessKey;
-    @Value("${AWS_SECRET_KEY}")
-    private String secretKey;
     private String region = "us-west-2";
     private GameSetting gameSetting = new GameSetting();
     private Map<String, User> users = new HashMap<>();
@@ -57,7 +53,7 @@ public class GameService {
     GameService() {
         this.leader = new User("", 1, 0);
 
-        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+        BasicAWSCredentials credentials = new BasicAWSCredentials(System.getenv("AWS_ACCESS_KEY"), System.getenv("AWS_SECRET_KEY"));
         s3Client = AmazonS3ClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("https://s3." + region + ".amazonaws.com", region))
