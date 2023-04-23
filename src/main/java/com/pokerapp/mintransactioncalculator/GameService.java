@@ -34,12 +34,20 @@ import com.pokerapp.mintransactioncalculator.entity.Leaderboard;
 import com.pokerapp.mintransactioncalculator.entity.Transaction;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class GameService {
     private String scoreboardBucketName =  "scoreleaderboard";
+
+    @Value("${AWS_ACCESS_KEY}")
+    private String accessKey;
+
+    @Value("${AWS_SECRET_KEY}")
+    private String secretKey;
+
     private String instanceId = "9aaee532-e17d-11ed-b5ea-0242ac120002";
     private String region = "us-west-2";
 
@@ -52,7 +60,7 @@ public class GameService {
     GameService() {
         this.leader = new User("", 1, 0);
 
-        BasicAWSCredentials credentials = new BasicAWSCredentials(System.getenv("AWS_ACCESS_KEY"), System.getenv("AWS_SECRET_KEY"));
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
         s3Client = AmazonS3ClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("https://s3." + region + ".amazonaws.com", region))
