@@ -11,11 +11,6 @@
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </head>
 <style>
-  table {
-    border-collapse: collapse;
-    width: 30%;
-  }
-
   th,
   td {
     text-align: left;
@@ -156,8 +151,10 @@
       if (tableData.balances) {
         balancesData = tableData.balances;
         balancesData.sort((a, b) => b.balance - a.balance);
+        order = 1;
         balancesData.forEach(function (balance) {
-          tableHtml += "<tr><td>" + balance.name + "</td><td>" + balance.balance + "</td></tr>";
+          tableHtml += "<tr><td>" + order + "- " + balance.name + "</td><td>" + balance.balance + "</td></tr>";
+          order++;
         });
       }
       tableHtml += "</table>";
