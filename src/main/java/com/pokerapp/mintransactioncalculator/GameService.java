@@ -34,6 +34,7 @@ import com.pokerapp.mintransactioncalculator.entity.Leaderboard;
 import com.pokerapp.mintransactioncalculator.entity.Transaction;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,10 +42,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class GameService {
     private String scoreboardBucketName =  "scoreleaderboard";
     private String instanceId = "9aaee532-e17d-11ed-b5ea-0242ac120002";
-    private String accessKey = "";
-    private String secretKey = "";
-    private String region = "us-west-2";
 
+    @Value("${AWS_ACCESS_KEY}")
+    private String accessKey;
+    @Value("${AWS_SECRET_KEY}")
+    private String secretKey;
+    private String region = "us-west-2";
     private GameSetting gameSetting = new GameSetting();
     private Map<String, User> users = new HashMap<>();
     private List<Balance> balances = new ArrayList<Balance>();
