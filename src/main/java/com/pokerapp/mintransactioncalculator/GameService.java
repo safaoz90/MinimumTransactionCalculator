@@ -34,21 +34,15 @@ import com.pokerapp.mintransactioncalculator.entity.Leaderboard;
 import com.pokerapp.mintransactioncalculator.entity.Transaction;
 import com.pokerapp.mintransactioncalculator.entity.User;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class GameService {
     private String scoreboardBucketName =  "scoreleaderboard";
-
-    @Value("${AWS_ACCESS_KEY}")
-    private String accessKey;
-
-    @Value("${AWS_SECRET_KEY}")
-    private String secretKey;
-
     private String instanceId = "9aaee532-e17d-11ed-b5ea-0242ac120002";
+    private String accessKey = "";
+    private String secretKey = "";
     private String region = "us-west-2";
 
     private GameSetting gameSetting = new GameSetting();
@@ -135,7 +129,7 @@ public class GameService {
 
     public void publishLeaderboard() throws Exception {
         Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.HOUR, 12);
+        cal.add(Calendar.HOUR, -12);
         String year = String.valueOf(cal.get(Calendar.YEAR));
         String month = String.valueOf(cal.get(Calendar.MONTH) + 1);
         if (month.length() == 1) {
@@ -193,7 +187,7 @@ public class GameService {
 
                 // No star for current month.
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.HOUR, 12);
+                cal.add(Calendar.HOUR, -12);
                 String currentYear = String.valueOf(cal.get(Calendar.YEAR));
                 String currentMonth = String.valueOf(cal.get(Calendar.MONTH) + 1);
                 if (currentMonth.length() == 1) {

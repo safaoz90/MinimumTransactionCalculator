@@ -355,17 +355,20 @@
     }
 
     function publishLeaderboard() {
-      $.ajax({
-        url: '/leaderboard',
-        type: 'POST',
-        success: function (response) {
-          console.log('Leaderboard published:', response);
-          fetchExistingLeaderboard();
-        },
-        error: function (error) {
-          console.log('Error publishing leaderboard:', error);
-        },
-      });
+      if (confirm("Are you sure to publish?") == true) {
+
+        $.ajax({
+          url: '/leaderboard',
+          type: 'POST',
+          success: function (response) {
+            console.log('Leaderboard published:', response);
+            fetchExistingLeaderboard();
+          },
+          error: function (error) {
+            console.log('Error publishing leaderboard:', error);
+          },
+        });
+      }
     }
 
     function fetchExistingLeader() {
