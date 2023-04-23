@@ -52,7 +52,7 @@ public class GameService {
     GameService() {
         this.leader = new User("", 1, 0);
 
-        BasicAWSCredentials credentials = new BasicAWSCredentials(System.getProperty("AWS_ACCESS_KEY", ""), System.getProperty("AWS_SECRET_KEY", ""));
+        BasicAWSCredentials credentials = new BasicAWSCredentials(System.getenv("AWS_ACCESS_KEY"), System.getenv("AWS_SECRET_KEY"));
         s3Client = AmazonS3ClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("https://s3." + region + ".amazonaws.com", region))
