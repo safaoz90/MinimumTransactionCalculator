@@ -1,8 +1,8 @@
 package com.pokerapp.mintransactioncalculator.entity;
 
 public class GameSetting {
-    public int chipAmount = 1000;
-    public int dollarValue = 10;
+    public int chipAmount = 300;
+    public int dollarValue = 15;
     public String leaderboardId = "";
 
     public GameSetting(int chipAmount, int dollarValue, String leaderboardId){
