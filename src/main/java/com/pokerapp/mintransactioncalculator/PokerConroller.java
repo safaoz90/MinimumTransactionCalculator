@@ -47,6 +47,11 @@ public class PokerConroller {
         return service.getAllUsers();
     }
 
+    @DeleteMapping("/user")
+    public void deleteAllUsers() {
+        service.deleteAllUsers();
+    }
+
     @DeleteMapping("/user/{username}")
     public void deleteUser(@PathVariable String username) {
         service.deleteUser(username);

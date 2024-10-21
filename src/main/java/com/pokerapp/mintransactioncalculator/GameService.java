@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -45,7 +46,7 @@ public class GameService {
 
     private String region = "us-west-2";
     private GameSetting gameSetting = new GameSetting();
-    private Map<String, User> users = new HashMap<>();
+    private Map<String, User> users = new ConcurrentHashMap<>();
     private List<Balance> balances = new ArrayList<Balance>();
     private User leader;
     private AmazonS3 s3Client;
@@ -78,6 +79,10 @@ public class GameService {
 
     public List<User> getAllUsers() {
         return users.values().stream().toList();
+    }
+
+    public void deleteAllUsers() {
+        users.clear();
     }
 
     public List<Transaction> minTransactions() throws Exception {
